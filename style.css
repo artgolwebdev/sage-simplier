@@ -1,3 +1,18 @@
+/**
+ * SAGE Tattoo Shop - Main Stylesheet
+ *
+ * Design: Brutal Minimalistic with Graffiti/Urban Typography
+ * Color Scheme: Black & White High Contrast
+ * Fonts: Black Ops One, Bebas Neue
+ * Features: Responsive, Animations, 3D Effects
+ *
+ * @author Claude Code
+ * @version 1.0.0
+ */
+
+/* ============================================
+   GLOBAL RESET & VARIABLES
+   ============================================ */
 * {
     margin: 0;
     padding: 0;

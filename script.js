@@ -1,4 +1,21 @@
-// Artist Data Structure
+/**
+ * SAGE Tattoo Shop - Main JavaScript
+ *
+ * Features:
+ * - Dynamic artist gallery with Swiper.js cube effect
+ * - Artist profile navigation system
+ * - Multi-step booking form with SweetAlert2
+ * - WhatsApp integration for booking requests
+ * - Smooth scroll navigation
+ *
+ * @author Claude Code
+ * @version 1.0.0
+ */
+
+// ============================================
+// ARTIST DATA STRUCTURE
+// ============================================
+// Configure artists, profiles, and images here
 const artists = [
     {
         name: 'dani',
@@ -157,7 +174,9 @@ const artists = [
 let swiper;
 let artistStartIndices = [];
 
-// Loading Animation
+// ============================================
+// LOADING ANIMATION
+// ============================================
 window.addEventListener('load', () => {
     const loader = document.getElementById('loader');
     const mainContent = document.getElementById('main-content');
@@ -184,7 +203,9 @@ window.addEventListener('load', () => {
     }, 1500);
 });
 
-// Initialize Gallery with Artist Images
+// ============================================
+// GALLERY INITIALIZATION
+// ============================================
 function initializeGallery() {
     const swiperWrapper = document.getElementById('swiper-wrapper');
     const artistNav = document.getElementById('artist-nav');
@@ -254,7 +275,9 @@ function initializeGallery() {
     }, 100);
 }
 
-// Update Active Artist Profile
+// ============================================
+// ACTIVE ARTIST TRACKING
+// ============================================
 function updateActiveArtist() {
     if (!swiper) return; // Guard clause if swiper not initialized yet
 
@@ -280,7 +303,9 @@ function updateActiveArtist() {
     });
 }
 
-// Smooth Scroll for Navigation
+// ============================================
+// SMOOTH SCROLL NAVIGATION
+// ============================================
 document.querySelectorAll('.nav-link').forEach(link => {
     link.addEventListener('click', (e) => {
         e.preventDefault();
@@ -296,7 +321,10 @@ document.querySelectorAll('.nav-link').forEach(link => {
     });
 });
 
-// Booking Form Multi-Step
+// ============================================
+// BOOKING FORM - MULTI-STEP SYSTEM
+// ============================================
+// Stores user selections throughout the booking process
 const bookingData = {
     placement: '',
     size: '',
