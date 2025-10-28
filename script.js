@@ -286,32 +286,37 @@ function initializeGallery() {
 }
 
 // ============================================
-// TATTOO MACHINE SOUND EFFECT
+// PLEASANT CHIME SOUND EFFECT
 // ============================================
 function playTattooSound() {
-    // Create AudioContext
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-    // Create oscillator for buzz sound
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    // Create multiple oscillators for a pleasant chord
+    const playNote = (freq, startTime, duration) => {
+        const osc = audioContext.createOscillator();
+        const gain = audioContext.createGain();
 
-    // Configure tattoo machine-like buzz
-    oscillator.type = 'sawtooth';
-    oscillator.frequency.setValueAtTime(120, audioContext.currentTime);
-    oscillator.frequency.exponentialRampToValueAtTime(80, audioContext.currentTime + 0.1);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, startTime);
 
-    // Volume envelope
-    gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+        // Soft attack and decay envelope
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
 
-    // Connect nodes
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+        osc.connect(gain);
+        gain.connect(audioContext.destination);
 
-    // Play sound
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 0.15);
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+    };
+
+    const now = audioContext.currentTime;
+
+    // Play a pleasant major chord (C-E-G)
+    playNote(523.25, now, 0.4);        // C5
+    playNote(659.25, now + 0.05, 0.35); // E5
+    playNote(783.99, now + 0.1, 0.3);   // G5
 }
 
 // ============================================
