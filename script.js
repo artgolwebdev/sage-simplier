@@ -173,6 +173,116 @@ const artists = [
 
 let swiper;
 let artistStartIndices = [];
+let isMuted = false;
+
+// Audio System - Optimized for Cozy Minimalistic Sounds
+const AudioSystem = {
+    context: null,
+    isInitialized: false,
+    isSupported: false,
+    masterVolume: 0.7, // Global volume control for cozy experience
+    
+    init() {
+        if (this.isInitialized && this.context && this.context.state !== 'closed') {
+            return this.context;
+        }
+        
+        try {
+            // Close existing context if it exists
+            if (this.context && this.context.state !== 'closed') {
+                this.context.close();
+            }
+            
+            // Create new context with optimized settings
+            this.context = new (window.AudioContext || window.webkitAudioContext)({
+                sampleRate: 44100, // Standard sample rate
+                latencyHint: 'interactive' // Optimize for responsiveness
+            });
+            this.isInitialized = true;
+            this.isSupported = true;
+            
+            console.log('AudioSystem initialized with cozy settings');
+            return this.context;
+        } catch (error) {
+            console.warn('AudioSystem not supported:', error);
+            this.isSupported = false;
+            return null;
+        }
+    },
+    
+    async resume() {
+        if (!this.context || this.context.state === 'closed') {
+            return false;
+        }
+        
+        if (this.context.state === 'suspended') {
+            try {
+                await this.context.resume();
+                console.log('AudioSystem resumed');
+                return true;
+            } catch (error) {
+                console.warn('Failed to resume AudioSystem:', error);
+                return false;
+            }
+        }
+        
+        return true;
+    },
+    
+    playSound(frequency, duration = 0.04, volume = 0.015, waveType = 'sine', delay = 0) {
+        if (!this.isSupported || isMuted) return;
+        
+        const ctx = this.init();
+        if (!ctx) return;
+        
+        this.resume().then(success => {
+            if (!success) return;
+            
+            try {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                osc.type = waveType;
+                osc.frequency.setValueAtTime(frequency, ctx.currentTime + delay);
+                
+                // Apply master volume for cozy experience
+                const finalVolume = volume * this.masterVolume;
+                
+                // Ultra-quick, minimal envelope for cozy responsive sounds
+                gain.gain.setValueAtTime(0, ctx.currentTime + delay);
+                gain.gain.linearRampToValueAtTime(finalVolume, ctx.currentTime + delay + 0.002);
+                gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + delay + duration);
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                
+                osc.start(ctx.currentTime + delay);
+                osc.stop(ctx.currentTime + delay + duration);
+            } catch (error) {
+                console.warn('Error playing sound:', error);
+            }
+        });
+    },
+    
+    playChord(frequencies, duration = 0.12, volume = 0.025, delay = 0) {
+        if (!this.isSupported || isMuted) return;
+        
+        frequencies.forEach((freq, index) => {
+            this.playSound(freq, duration - (index * 0.02), volume * 0.7, 'sine', delay + (index * 0.01));
+        });
+    },
+    
+    // Volume control for cozy experience
+    setMasterVolume(volume) {
+        this.masterVolume = Math.max(0, Math.min(1, volume));
+        console.log(`Master volume set to: ${(this.masterVolume * 100).toFixed(0)}%`);
+    },
+    
+    // Get current master volume
+    getMasterVolume() {
+        return this.masterVolume;
+    }
+};
 
 // ============================================
 // LOADING ANIMATION
@@ -262,13 +372,19 @@ function initializeGallery() {
             disableOnInteraction: false,
         },
         on: {
-            slideChange: updateActiveArtist
+            slideChange: () => {
+                playSlideSound();
+                updateActiveArtist();
+            }
         }
     });
 
     // Add click handlers to artist profiles with unique sound effects
     document.querySelectorAll('.artist-profile').forEach(profile => {
         profile.addEventListener('click', () => {
+            // Initialize audio system on first interaction
+            AudioSystem.init();
+            
             // Get artist name and play their unique sound
             const artistName = profile.getAttribute('data-artist-name');
             playTattooSound(artistName);
@@ -287,84 +403,69 @@ function initializeGallery() {
 }
 
 // ============================================
-// UNIQUE SOUND FOR EACH ARTIST
+// SLIDE SOUND EFFECT - SHORT LOW KICK
+// ============================================
+// Short, punchy low kick sound for cube slides
+// Provides satisfying tactile feedback without being intrusive
+function playSlideSound() {
+    if (!AudioSystem.isSupported || isMuted) return;
+    
+    const ctx = AudioSystem.init();
+    if (!ctx) return;
+    
+    AudioSystem.resume().then(success => {
+        if (!success) return;
+        
+        try {
+            // Create small deep bass sound
+            const now = ctx.currentTime;
+            
+            // Deep bass oscillator - lower frequency for deeper sound
+            const osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(40, now); // Deep bass frequency
+            osc.frequency.exponentialRampToValueAtTime(20, now + 0.15); // Slow pitch drop for deep rumble
+            
+            // Gain envelope for deep bass punch
+            const gain = ctx.createGain();
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.15 * AudioSystem.masterVolume, now + 0.002); // Higher volume
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12); // Longer decay for deep bass
+            
+            // Connect and play
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            
+            osc.start(now);
+            osc.stop(now + 0.12);
+            
+        } catch (error) {
+            console.warn('Error playing deep bass sound:', error);
+        }
+    });
+}
+
+// ============================================
+// ARTIST SOUNDS - COZY & MINIMALISTIC
 // ============================================
 function playTattooSound(artistName) {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-    // Helper function to play a note
-    const playNote = (freq, startTime, duration, waveType = 'sine') => {
-        const osc = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-
-        osc.type = waveType;
-        osc.frequency.setValueAtTime(freq, startTime);
-
-        // Soft attack and decay envelope
-        gain.gain.setValueAtTime(0, startTime);
-        gain.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
-
-        osc.connect(gain);
-        gain.connect(audioContext.destination);
-
-        osc.start(startTime);
-        osc.stop(startTime + duration);
-    };
-
-    const now = audioContext.currentTime;
-
-    // Different sound for each artist
     const artistSounds = {
-        'dani': () => {
-            // C Major Chord - Bright and cheerful
-            playNote(523.25, now, 0.4);        // C5
-            playNote(659.25, now + 0.05, 0.35); // E5
-            playNote(783.99, now + 0.1, 0.3);   // G5
-        },
-        'derk': () => {
-            // D Major Chord - Happy and uplifting
-            playNote(587.33, now, 0.4);        // D5
-            playNote(739.99, now + 0.05, 0.35); // F#5
-            playNote(880.00, now + 0.1, 0.3);   // A5
-        },
-        'gosha': () => {
-            // G Major Chord - Strong and confident
-            playNote(392.00, now, 0.4);        // G4
-            playNote(493.88, now + 0.05, 0.35); // B4
-            playNote(587.33, now + 0.1, 0.3);   // D5
-        },
-        'groc': () => {
-            // F Major Chord - Warm and cozy
-            playNote(349.23, now, 0.4);        // F4
-            playNote(440.00, now + 0.05, 0.35); // A4
-            playNote(523.25, now + 0.1, 0.3);   // C5
-        },
-        'jenya': () => {
-            // A Minor Chord - Soft and delicate
-            playNote(440.00, now, 0.4);        // A4
-            playNote(523.25, now + 0.05, 0.35); // C5
-            playNote(659.25, now + 0.1, 0.3);   // E5
-        },
-        'shon': () => {
-            // E Minor Chord - Mysterious and elegant
-            playNote(329.63, now, 0.4);        // E4
-            playNote(392.00, now + 0.05, 0.35); // G4
-            playNote(493.88, now + 0.1, 0.3);   // B4
-        },
+        'dani': () => AudioSystem.playChord([523.25, 659.25, 783.99], 0.08, 0.015), // C Major - soft
+        'derk': () => AudioSystem.playChord([587.33, 739.99, 880.00], 0.08, 0.015), // D Major - gentle
+        'gosha': () => AudioSystem.playChord([392.00, 493.88, 587.33], 0.08, 0.015), // G Major - warm
+        'groc': () => AudioSystem.playChord([349.23, 440.00, 523.25], 0.08, 0.015), // F Major - cozy
+        'jenya': () => AudioSystem.playChord([440.00, 523.25, 659.25], 0.08, 0.015), // A Minor - subtle
+        'shon': () => AudioSystem.playChord([329.63, 392.00, 493.88], 0.08, 0.015), // E Minor - quiet
         'sunches': () => {
-            // A Major Chord - Bright and playful
-            playNote(440.00, now, 0.35);        // A4
-            playNote(554.37, now + 0.04, 0.3);  // C#5
-            playNote(659.25, now + 0.08, 0.25); // E5
-            playNote(880.00, now + 0.12, 0.2);  // A5 (octave)
+            AudioSystem.playChord([440.00, 554.37, 659.25], 0.06, 0.015);
+            AudioSystem.playSound(880.00, 0.04, 0.01, 'sine', 0.05); // Soft octave
         },
         'tact': () => {
-            // Pentatonic melody - Fun and energetic
-            playNote(523.25, now, 0.15, 'triangle');      // C5
-            playNote(587.33, now + 0.1, 0.15, 'triangle'); // D5
-            playNote(659.25, now + 0.2, 0.15, 'triangle'); // E5
-            playNote(783.99, now + 0.3, 0.2, 'triangle');  // G5
+            // Minimal pentatonic melody
+            AudioSystem.playSound(523.25, 0.03, 0.01, 'triangle');
+            AudioSystem.playSound(587.33, 0.03, 0.01, 'triangle', 0.03);
+            AudioSystem.playSound(659.25, 0.03, 0.01, 'triangle', 0.06);
+            AudioSystem.playSound(783.99, 0.04, 0.01, 'triangle', 0.09);
         }
     };
 
@@ -423,7 +524,7 @@ document.querySelectorAll('.nav-link').forEach(link => {
 });
 
 // ============================================
-// BOOKING FORM - MULTI-STEP SYSTEM
+// BOOKING FORM - MULTI-STEP SYSTEM WITH PROGRESS BAR
 // ============================================
 // Stores user selections throughout the booking process
 const bookingData = {
@@ -433,7 +534,240 @@ const bookingData = {
     budget: ''
 };
 
-// Custom SweetAlert2 styling
+// Booking form configuration
+const bookingSteps = [
+    { id: 'placement', title: 'PLACEMENT', icon: '📍' },
+    { id: 'size', title: 'SIZE', icon: '📏' },
+    { id: 'date', title: 'DATE', icon: '📅' },
+    { id: 'budget', title: 'BUDGET', icon: '💰' }
+];
+
+let currentStepIndex = 0;
+
+// Message builder configuration
+const messageConfig = {
+    placement: {
+        'arm': 'arm',
+        'leg': 'leg', 
+        'chest': 'chest',
+        'back': 'back',
+        'shoulder': 'shoulder',
+        'neck': 'neck',
+        'hand': 'hand',
+        'other': 'other area'
+    },
+    size: {
+        's': 'small',
+        'm': 'medium',
+        'l': 'large', 
+        'xl': 'extra large'
+    },
+    budget: {
+        'basic': 'basic budget',
+        'standard': 'standard budget',
+        'premium': 'premium budget',
+        'luxury': 'luxury budget'
+    }
+};
+
+// Generate dynamic message based on selections
+function generateBookingMessage() {
+    let message = "Hi! I'm interested in getting a tattoo";
+    
+    if (bookingData.placement) {
+        message += ` on my ${messageConfig.placement[bookingData.placement]}`;
+    }
+    
+    if (bookingData.size) {
+        message += `, ${messageConfig.size[bookingData.size]} size`;
+    }
+    
+    if (bookingData.budget) {
+        message += `, ${messageConfig.budget[bookingData.budget]}`;
+    }
+    
+    if (bookingData.date) {
+        const dateObj = new Date(bookingData.date);
+        const formattedDate = dateObj.toLocaleDateString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        message += `, preferred date: ${formattedDate}`;
+    }
+    
+    message += ". Looking forward to hearing from you!";
+    
+    return message;
+}
+
+// Update message display
+function updateMessageDisplay() {
+    const messageElement = document.getElementById('booking-message');
+    if (messageElement) {
+        const message = generateBookingMessage();
+        messageElement.textContent = message;
+        
+        // Add animation
+        messageElement.style.opacity = '0';
+        setTimeout(() => {
+            messageElement.style.opacity = '1';
+        }, 100);
+    }
+}
+
+// Validation functions
+function validateStep(stepIndex) {
+    switch(stepIndex) {
+        case 0: // Placement step
+            return validatePlacement();
+        case 1: // Size step
+            return validateSize();
+        case 2: // Date step
+            return validateDate();
+        case 3: // Budget step
+            return validateBudget();
+        default:
+            return true;
+    }
+}
+
+function validatePlacement() {
+    if (!bookingData.placement) {
+        showValidationError('Please select a placement for your tattoo');
+        return false;
+    }
+    return true;
+}
+
+function validateSize() {
+    if (!bookingData.size) {
+        showValidationError('Please select a size for your tattoo');
+        return false;
+    }
+    return true;
+}
+
+function validateDate() {
+    const dateInput = document.getElementById('tattoo-date');
+    
+    // Check if date input exists
+    if (!dateInput) {
+        showValidationError('Date input not found. Please refresh the page.');
+        return false;
+    }
+    
+    // Check if date is selected
+    if (!dateInput.value) {
+        showValidationError('Please select a date for your tattoo appointment');
+        return false;
+    }
+    
+    // Parse the selected date
+    const selectedDate = new Date(dateInput.value);
+    
+    // Check if date is valid
+    if (isNaN(selectedDate.getTime())) {
+        showValidationError('Please select a valid date');
+        return false;
+    }
+    
+    // Get today's date (start of day)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Check if date is in the future
+    if (selectedDate <= today) {
+        showValidationError('Please select a future date for your appointment');
+        return false;
+    }
+    
+    // Check if date is not too far in the future (optional - within 1 year)
+    const oneYearFromNow = new Date();
+    oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+    
+    if (selectedDate > oneYearFromNow) {
+        showValidationError('Please select a date within the next year');
+        return false;
+    }
+    
+    // Date is valid - it's already stored in bookingData.date by the event listener
+    return true;
+}
+
+function validateBudget() {
+    if (!bookingData.budget) {
+        showValidationError('Please select a budget range for your tattoo');
+        return false;
+    }
+    
+    // Additional validation - check if budget value is valid
+    const validBudgets = ['basic', 'standard', 'premium', 'luxury'];
+    if (!validBudgets.includes(bookingData.budget)) {
+        showValidationError('Please select a valid budget option');
+        return false;
+    }
+    
+    return true;
+}
+
+function showValidationError(message) {
+    // Remove existing validation messages
+    const existingError = document.querySelector('.validation-error');
+    if (existingError) {
+        existingError.remove();
+    }
+    
+    // Create error message element
+    const errorElement = document.createElement('div');
+    errorElement.className = 'validation-error';
+    errorElement.textContent = message;
+    
+    // Insert error message after the current step
+    const currentStep = document.querySelector('.booking-step[style*="block"]');
+    if (currentStep) {
+        currentStep.appendChild(errorElement);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (errorElement.parentNode) {
+                errorElement.remove();
+            }
+        }, 5000);
+    }
+}
+
+function clearValidationError() {
+    const existingError = document.querySelector('.validation-error');
+    if (existingError) {
+        existingError.remove();
+    }
+}
+
+// Generate progress bar HTML
+function generateProgressBar(stepIndex) {
+    const progressPercentage = ((stepIndex + 1) / bookingSteps.length) * 100;
+    
+    return `
+        <div class="booking-progress">
+            <div class="progress-bar">
+                <div class="progress-fill" style="width: ${progressPercentage}%"></div>
+            </div>
+            <div class="step-indicators">
+                ${bookingSteps.map((step, index) => `
+                    <div class="step-indicator ${index <= stepIndex ? 'completed' : ''} ${index === stepIndex ? 'current' : ''}">
+                        <span class="step-icon">${step.icon}</span>
+                        <span class="step-title">${step.title}</span>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="step-counter">STEP ${stepIndex + 1} OF ${bookingSteps.length}</div>
+        </div>
+    `;
+}
+
+// Custom SweetAlert2 styling with full screen popup
 const swalStyle = {
     background: '#000',
     color: '#fff',
@@ -442,58 +776,38 @@ const swalStyle = {
     showCancelButton: true,
     cancelButtonColor: '#333',
     cancelButtonText: '◀ BACK',
+    showCloseButton: true,
+    closeButtonHtml: '<span class="close-btn">✕</span>',
+    allowOutsideClick: false,
+    allowEscapeKey: true,
+    width: '100vw',
+    height: '100vh',
+    padding: '0',
+    margin: '0',
     customClass: {
-        popup: 'brutal-popup',
+        popup: 'brutal-popup-fullscreen',
         title: 'brutal-title',
         confirmButton: 'brutal-confirm',
-        cancelButton: 'brutal-cancel'
+        cancelButton: 'brutal-cancel',
+        closeButton: 'brutal-close'
     }
 };
 
-// Step 1: Placement Selection
-async function step1Placement() {
+// Single Popup Booking Form
+async function showBookingForm() {
+    currentStepIndex = 0;
+    
     const placements = [
-        { id: 'arm', label: 'ARM', icon: '💪' },
-        { id: 'leg', label: 'LEG', icon: '🦵' },
-        { id: 'chest', label: 'CHEST', icon: '❤️' },
-        { id: 'back', label: 'BACK', icon: '🔥' },
-        { id: 'shoulder', label: 'SHOULDER', icon: '⭐' },
-        { id: 'neck', label: 'NECK', icon: '👤' },
-        { id: 'hand', label: 'HAND', icon: '✋' },
-        { id: 'other', label: 'OTHER', icon: '📍' }
+        { id: 'arm', label: 'ARM', icon: '▓' },
+        { id: 'leg', label: 'LEG', icon: '▼' },
+        { id: 'chest', label: 'CHEST', icon: '■' },
+        { id: 'back', label: 'BACK', icon: '●' },
+        { id: 'shoulder', label: 'SHOULDER', icon: '◢' },
+        { id: 'neck', label: 'NECK', icon: '▬' },
+        { id: 'hand', label: 'HAND', icon: '◆' },
+        { id: 'other', label: 'OTHER', icon: '✦' }
     ];
 
-    const placementHTML = `
-        <div class="placement-grid">
-            ${placements.map(p => `
-                <button class="placement-box" data-placement="${p.id}">
-                    <span class="placement-icon">${p.icon}</span>
-                    <span class="placement-label">${p.label}</span>
-                </button>
-            `).join('')}
-        </div>
-    `;
-
-    const result = await Swal.fire({
-        title: 'WHERE DO YOU WANT YOUR TATTOO?',
-        html: placementHTML,
-        ...swalStyle,
-        showConfirmButton: false,
-        showCancelButton: false,
-        didOpen: () => {
-            document.querySelectorAll('.placement-box').forEach(box => {
-                box.addEventListener('click', async () => {
-                    bookingData.placement = box.dataset.placement;
-                    Swal.close();
-                    await step2Size();
-                });
-            });
-        }
-    });
-}
-
-// Step 2: Size Selection
-async function step2Size() {
     const sizes = [
         { id: 's', label: 'S', desc: 'SMALL', size: '2-4cm' },
         { id: 'm', label: 'M', desc: 'MEDIUM', size: '5-10cm' },
@@ -501,114 +815,283 @@ async function step2Size() {
         { id: 'xl', label: 'XL', desc: 'X-LARGE', size: '20cm+' }
     ];
 
-    const sizeHTML = `
-        <div class="size-grid">
-            ${sizes.map(s => `
-                <button class="size-box" data-size="${s.id}">
-                    <span class="size-label">${s.label}</span>
-                    <span class="size-desc">${s.desc}</span>
-                    <span class="size-measurement">${s.size}</span>
-                </button>
-            `).join('')}
-        </div>
-    `;
+    const budgets = [
+        { id: 'basic', label: 'BASIC', price: '₪500-1000', icon: '◆' },
+        { id: 'standard', label: 'STANDARD', price: '₪1000-2000', icon: '◆◆' },
+        { id: 'premium', label: 'PREMIUM', price: '₪2000-3500', icon: '◆◆◆' },
+        { id: 'luxury', label: 'LUXURY', price: '₪3500+', icon: '◆◆◆◆' }
+    ];
 
-    const result = await Swal.fire({
-        title: 'WHAT SIZE?',
-        html: sizeHTML,
-        ...swalStyle,
-        showConfirmButton: false,
-        showCancelButton: true,
-        didOpen: () => {
-            document.querySelectorAll('.size-box').forEach(box => {
-                box.addEventListener('click', async () => {
-                    bookingData.size = box.dataset.size;
-                    Swal.close();
-                    await step3Date();
-                });
-            });
-        }
-    });
-
-    if (result.dismiss === Swal.DismissReason.cancel) {
-        await step1Placement();
-    }
-}
-
-// Step 3: Date Selection
-async function step3Date() {
     // Get tomorrow's date as minimum
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const minDate = tomorrow.toISOString().split('T')[0];
 
-    const result = await Swal.fire({
-        title: 'WHEN DO YOU WANT TO COME?',
-        html: `
+    const bookingHTML = `
+        ${generateProgressBar(currentStepIndex)}
+        
+        <!-- Dynamic Message Display -->
+        <div class="booking-message-container">
+            <p class="booking-message-preview">Your message will be:</p>
+            <div class="booking-message" id="booking-message">Hi! I'm interested in getting a tattoo. Looking forward to hearing from you!</div>
+        </div>
+        
+        <!-- Step 1: Placement -->
+        <div class="booking-step" id="step-placement" style="display: block;">
+            <div class="placement-grid">
+                ${placements.map(p => `
+                    <button class="placement-box" data-placement="${p.id}">
+                        <span class="placement-icon">${p.icon}</span>
+                        <span class="placement-label">${p.label}</span>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+
+        <!-- Step 2: Size -->
+        <div class="booking-step" id="step-size" style="display: none;">
+            <div class="size-grid">
+                ${sizes.map(s => `
+                    <button class="size-box" data-size="${s.id}">
+                        <span class="size-label">${s.label}</span>
+                        <span class="size-desc">${s.desc}</span>
+                        <span class="size-measurement">${s.size}</span>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+
+        <!-- Step 3: Date -->
+        <div class="booking-step" id="step-date" style="display: none;">
             <input type="date" id="tattoo-date" class="swal-date-input" min="${minDate}" />
             <p class="date-note">SELECT YOUR PREFERRED DATE</p>
-        `,
-        ...swalStyle,
-        confirmButtonText: 'NEXT ▶',
-        preConfirm: () => {
-            const date = document.getElementById('tattoo-date').value;
-            if (!date) {
-                Swal.showValidationMessage('Please select a date');
-                return false;
-            }
-            return date;
-        }
-    });
+        </div>
 
-    if (result.isConfirmed) {
-        bookingData.date = result.value;
-        await step4Budget();
-    } else if (result.dismiss === Swal.DismissReason.cancel) {
-        await step2Size();
-    }
-}
+        <!-- Step 4: Budget -->
+        <div class="booking-step" id="step-budget" style="display: none;">
+            <div class="budget-grid">
+                ${budgets.map(b => `
+                    <button class="budget-box" data-budget="${b.id}">
+                        <span class="budget-icon">${b.icon}</span>
+                        <span class="budget-label">${b.label}</span>
+                        <span class="budget-price">${b.price}</span>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
 
-// Step 4: Budget Selection
-async function step4Budget() {
-    const budgets = [
-        { id: 'basic', label: 'BASIC', price: '₪500-1000', icon: '💵' },
-        { id: 'standard', label: 'STANDARD', price: '₪1000-2000', icon: '💰' },
-        { id: 'premium', label: 'PREMIUM', price: '₪2000-3500', icon: '💎' },
-        { id: 'luxury', label: 'LUXURY', price: '₪3500+', icon: '👑' }
-    ];
-
-    const budgetHTML = `
-        <div class="budget-grid">
-            ${budgets.map(b => `
-                <button class="budget-box" data-budget="${b.id}">
-                    <span class="budget-icon">${b.icon}</span>
-                    <span class="budget-label">${b.label}</span>
-                    <span class="budget-price">${b.price}</span>
-                </button>
-            `).join('')}
+        <!-- Navigation Buttons -->
+        <div class="booking-navigation">
+            <button class="booking-btn booking-back" id="booking-back" style="display: none;">◀ BACK</button>
+            <button class="booking-btn booking-next" id="booking-next" style="display: none;">NEXT ▶</button>
+            <button class="booking-btn booking-submit" id="booking-submit" style="display: none;">COMPLETE BOOKING</button>
         </div>
     `;
 
     const result = await Swal.fire({
-        title: 'WHAT\'S YOUR BUDGET?',
-        html: budgetHTML,
+        title: 'BOOK YOUR TATTOO',
+        html: bookingHTML,
         ...swalStyle,
         showConfirmButton: false,
-        showCancelButton: true,
+        showCancelButton: false,
         didOpen: () => {
-            document.querySelectorAll('.budget-box').forEach(box => {
-                box.addEventListener('click', async () => {
-                    bookingData.budget = box.dataset.budget;
-                    Swal.close();
-                    await finalizeBooking();
-                });
-            });
+            initializeBookingForm();
         }
     });
+}
 
-    if (result.dismiss === Swal.DismissReason.cancel) {
-        await step3Date();
+// Initialize Single Popup Booking Form
+function initializeBookingForm() {
+    // Step navigation functions
+    function showStep(stepIndex) {
+        // Hide all steps
+        document.querySelectorAll('.booking-step').forEach(step => {
+            step.style.display = 'none';
+        });
+        
+        // Show current step
+        const stepNames = ['placement', 'size', 'date', 'budget'];
+        const currentStep = document.getElementById(`step-${stepNames[stepIndex]}`);
+        if (currentStep) {
+            currentStep.style.display = 'block';
+        }
+        
+        // Update progress bar
+        const progressBar = document.querySelector('.booking-progress');
+        if (progressBar) {
+            progressBar.innerHTML = generateProgressBar(stepIndex);
+        }
+        
+        // Update navigation buttons
+        updateNavigationButtons(stepIndex);
     }
+    
+    function updateNavigationButtons(stepIndex) {
+        const backBtn = document.getElementById('booking-back');
+        const nextBtn = document.getElementById('booking-next');
+        const submitBtn = document.getElementById('booking-submit');
+        
+        // Show/hide back button
+        if (stepIndex > 0) {
+            backBtn.style.display = 'block';
+        } else {
+            backBtn.style.display = 'none';
+        }
+        
+        // Show/hide next/submit buttons
+        if (stepIndex < bookingSteps.length - 1) {
+            nextBtn.style.display = 'block';
+            submitBtn.style.display = 'none';
+        } else {
+            nextBtn.style.display = 'none';
+            submitBtn.style.display = 'block';
+        }
+    }
+    
+    function goToNextStep() {
+        // Validate current step before proceeding
+        if (!validateStep(currentStepIndex)) {
+            return;
+        }
+        
+        clearValidationError();
+        
+        if (currentStepIndex < bookingSteps.length - 1) {
+            currentStepIndex++;
+            showStep(currentStepIndex);
+        }
+    }
+    
+    function goToPreviousStep() {
+        clearValidationError();
+        
+        if (currentStepIndex > 0) {
+            currentStepIndex--;
+            showStep(currentStepIndex);
+        }
+    }
+    
+    // Event listeners for step buttons
+    document.querySelectorAll('.placement-box').forEach(box => {
+        box.addEventListener('click', () => {
+            // Remove selected class from all placement boxes
+            document.querySelectorAll('.placement-box').forEach(b => b.classList.remove('selected'));
+            
+            // Add selected class to clicked box
+            box.classList.add('selected');
+            
+            bookingData.placement = box.dataset.placement;
+            updateMessageDisplay();
+            goToNextStep();
+        });
+    });
+    
+    document.querySelectorAll('.size-box').forEach(box => {
+        box.addEventListener('click', () => {
+            // Remove selected class from all size boxes
+            document.querySelectorAll('.size-box').forEach(b => b.classList.remove('selected'));
+            
+            // Add selected class to clicked box
+            box.classList.add('selected');
+            
+            bookingData.size = box.dataset.size;
+            updateMessageDisplay();
+            goToNextStep();
+        });
+    });
+    
+    document.querySelectorAll('.budget-box').forEach(box => {
+        box.addEventListener('click', () => {
+            // Remove selected class from all budget boxes
+            document.querySelectorAll('.budget-box').forEach(b => b.classList.remove('selected'));
+            
+            // Add selected class to clicked box
+            box.classList.add('selected');
+            
+            bookingData.budget = box.dataset.budget;
+            updateMessageDisplay();
+            
+            // Clear any validation errors
+            clearValidationError();
+            
+            // Validate the budget and proceed to completion
+            if (validateBudget()) {
+                // Add a small delay for better UX
+                setTimeout(() => {
+                    // Since budget is the last step, proceed to completion
+                    finalizeBooking();
+                }, 300);
+            }
+        });
+    });
+    
+    // Date input listener
+    const dateInput = document.getElementById('tattoo-date');
+    if (dateInput) {
+        dateInput.addEventListener('change', () => {
+            // Store the date value
+            bookingData.date = dateInput.value;
+            updateMessageDisplay();
+            
+            // Clear any validation errors
+            clearValidationError();
+            
+            // Validate the date and auto-advance if valid
+            if (validateDate()) {
+                // Add a small delay for better UX
+                setTimeout(() => {
+                    goToNextStep();
+                }, 300);
+            }
+        });
+    }
+    
+    // Navigation button listeners
+    document.getElementById('booking-back').addEventListener('click', goToPreviousStep);
+    document.getElementById('booking-next').addEventListener('click', goToNextStep);
+    
+    document.getElementById('booking-submit').addEventListener('click', () => {
+        // Validate all steps before final submission
+        if (!validateStep(currentStepIndex)) {
+            return;
+        }
+        
+        clearValidationError();
+        finalizeBooking();
+    });
+    
+    // Initialize first step
+    showStep(0);
+    
+    // Enhanced scrollbar functionality
+    initializeScrollbarEnhancements();
+}
+
+// Enhanced scrollbar functionality
+function initializeScrollbarEnhancements() {
+    const contentElement = document.querySelector('.brutal-popup-fullscreen .swal2-content');
+    if (!contentElement) return;
+    
+    let scrollTimeout;
+    
+    // Add scrolling class during scroll
+    contentElement.addEventListener('scroll', () => {
+        contentElement.classList.add('scrolling');
+        
+        // Clear existing timeout
+        clearTimeout(scrollTimeout);
+        
+        // Remove scrolling class after scroll ends
+        scrollTimeout = setTimeout(() => {
+            contentElement.classList.remove('scrolling');
+        }, 150);
+    });
+    
+    // Add smooth scroll behavior
+    contentElement.style.scrollBehavior = 'smooth';
+    
+    // Add scroll momentum for mobile
+    contentElement.style.webkitOverflowScrolling = 'touch';
 }
 
 // Finalize and Redirect to WhatsApp
@@ -627,25 +1110,86 @@ Looking forward to getting inked at SAGE!
     const phoneNumber = '972526967850';
     const whatsappURL = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
+    // Show completion screen with full progress bar
+    const completionHTML = `
+        ${generateProgressBar(bookingSteps.length - 1)}
+        <div class="completion-summary">
+            <h3 class="summary-title">BOOKING SUMMARY</h3>
+            <div class="summary-item">
+                <span class="summary-label">📍 PLACEMENT:</span>
+                <span class="summary-value">${bookingData.placement.toUpperCase()}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">📏 SIZE:</span>
+                <span class="summary-value">${bookingData.size.toUpperCase()}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">📅 DATE:</span>
+                <span class="summary-value">${bookingData.date}</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">💰 BUDGET:</span>
+                <span class="summary-value">${bookingData.budget.toUpperCase()}</span>
+            </div>
+        </div>
+        <p class="redirect-message">REDIRECTING TO WHATSAPP...</p>
+    `;
+
     await Swal.fire({
-        title: 'REDIRECTING TO WHATSAPP...',
-        html: '<p>We\'ll continue the conversation on WhatsApp!</p>',
+        title: 'BOOKING COMPLETE!',
+        html: completionHTML,
         icon: 'success',
         ...swalStyle,
         showConfirmButton: false,
-        timer: 2000
+        timer: 3000
     });
 
     window.open(whatsappURL, '_blank');
 }
 
-// Initialize Booking Flow
+// ============================================
+// MUTE BUTTON
+// ============================================
+function toggleMute() {
+    isMuted = !isMuted;
+    const muteBtn = document.getElementById('mute-btn');
+    if (muteBtn) {
+        if (isMuted) {
+            muteBtn.classList.add('muted');
+        } else {
+            muteBtn.classList.remove('muted');
+        }
+    }
+}
+
+// Initialize Booking Flow and Mute Button
 document.addEventListener('DOMContentLoaded', () => {
     const bookNowBtn = document.getElementById('book-now-btn');
     if (bookNowBtn) {
         bookNowBtn.addEventListener('click', (e) => {
             e.preventDefault();
-            step1Placement();
+            AudioSystem.init(); // Initialize audio on first user interaction
+            showBookingForm();
         });
     }
+
+    const muteBtn = document.getElementById('mute-btn');
+    if (muteBtn) {
+        muteBtn.addEventListener('click', () => {
+            AudioSystem.init(); // Initialize audio on first user interaction
+            toggleMute();
+        });
+    }
+    
+    // Initialize audio system on any user interaction
+    const initAudioOnInteraction = () => {
+        AudioSystem.init();
+        document.removeEventListener('click', initAudioOnInteraction);
+        document.removeEventListener('touchstart', initAudioOnInteraction);
+        document.removeEventListener('keydown', initAudioOnInteraction);
+    };
+    
+    document.addEventListener('click', initAudioOnInteraction);
+    document.addEventListener('touchstart', initAudioOnInteraction);
+    document.addEventListener('keydown', initAudioOnInteraction);
 });
