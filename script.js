@@ -266,11 +266,12 @@ function initializeGallery() {
         }
     });
 
-    // Add click handlers to artist profiles with sound effect
+    // Add click handlers to artist profiles with unique sound effects
     document.querySelectorAll('.artist-profile').forEach(profile => {
         profile.addEventListener('click', () => {
-            // Play tattoo machine sound
-            playTattooSound();
+            // Get artist name and play their unique sound
+            const artistName = profile.getAttribute('data-artist-name');
+            playTattooSound(artistName);
 
             // Navigate to artist's work
             const artistIndex = parseInt(profile.getAttribute('data-artist-index'));
@@ -286,17 +287,17 @@ function initializeGallery() {
 }
 
 // ============================================
-// PLEASANT CHIME SOUND EFFECT
+// UNIQUE SOUND FOR EACH ARTIST
 // ============================================
-function playTattooSound() {
+function playTattooSound(artistName) {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-    // Create multiple oscillators for a pleasant chord
-    const playNote = (freq, startTime, duration) => {
+    // Helper function to play a note
+    const playNote = (freq, startTime, duration, waveType = 'sine') => {
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
 
-        osc.type = 'sine';
+        osc.type = waveType;
         osc.frequency.setValueAtTime(freq, startTime);
 
         // Soft attack and decay envelope
@@ -313,10 +314,66 @@ function playTattooSound() {
 
     const now = audioContext.currentTime;
 
-    // Play a pleasant major chord (C-E-G)
-    playNote(523.25, now, 0.4);        // C5
-    playNote(659.25, now + 0.05, 0.35); // E5
-    playNote(783.99, now + 0.1, 0.3);   // G5
+    // Different sound for each artist
+    const artistSounds = {
+        'dani': () => {
+            // C Major Chord - Bright and cheerful
+            playNote(523.25, now, 0.4);        // C5
+            playNote(659.25, now + 0.05, 0.35); // E5
+            playNote(783.99, now + 0.1, 0.3);   // G5
+        },
+        'derk': () => {
+            // D Major Chord - Happy and uplifting
+            playNote(587.33, now, 0.4);        // D5
+            playNote(739.99, now + 0.05, 0.35); // F#5
+            playNote(880.00, now + 0.1, 0.3);   // A5
+        },
+        'gosha': () => {
+            // G Major Chord - Strong and confident
+            playNote(392.00, now, 0.4);        // G4
+            playNote(493.88, now + 0.05, 0.35); // B4
+            playNote(587.33, now + 0.1, 0.3);   // D5
+        },
+        'groc': () => {
+            // F Major Chord - Warm and cozy
+            playNote(349.23, now, 0.4);        // F4
+            playNote(440.00, now + 0.05, 0.35); // A4
+            playNote(523.25, now + 0.1, 0.3);   // C5
+        },
+        'jenya': () => {
+            // A Minor Chord - Soft and delicate
+            playNote(440.00, now, 0.4);        // A4
+            playNote(523.25, now + 0.05, 0.35); // C5
+            playNote(659.25, now + 0.1, 0.3);   // E5
+        },
+        'shon': () => {
+            // E Minor Chord - Mysterious and elegant
+            playNote(329.63, now, 0.4);        // E4
+            playNote(392.00, now + 0.05, 0.35); // G4
+            playNote(493.88, now + 0.1, 0.3);   // B4
+        },
+        'sunches': () => {
+            // A Major Chord - Bright and playful
+            playNote(440.00, now, 0.35);        // A4
+            playNote(554.37, now + 0.04, 0.3);  // C#5
+            playNote(659.25, now + 0.08, 0.25); // E5
+            playNote(880.00, now + 0.12, 0.2);  // A5 (octave)
+        },
+        'tact': () => {
+            // Pentatonic melody - Fun and energetic
+            playNote(523.25, now, 0.15, 'triangle');      // C5
+            playNote(587.33, now + 0.1, 0.15, 'triangle'); // D5
+            playNote(659.25, now + 0.2, 0.15, 'triangle'); // E5
+            playNote(783.99, now + 0.3, 0.2, 'triangle');  // G5
+        }
+    };
+
+    // Play the sound for the specific artist, or default to dani's sound
+    if (artistSounds[artistName]) {
+        artistSounds[artistName]();
+    } else {
+        artistSounds['dani']();
+    }
 }
 
 // ============================================
