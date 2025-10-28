@@ -231,11 +231,17 @@ function initializeGallery() {
             slideIndex++;
         });
 
-        // Create artist profile navigation button
+        // Create artist profile navigation button with name
         const artistBtn = document.createElement('div');
         artistBtn.className = 'artist-profile';
         artistBtn.setAttribute('data-artist-index', artistIndex);
-        artistBtn.innerHTML = `<img src="${artist.profile}" alt="${artist.name}" />`;
+        artistBtn.setAttribute('data-artist-name', artist.name);
+        artistBtn.innerHTML = `
+            <div class="artist-profile-img">
+                <img src="${artist.profile}" alt="${artist.name}" />
+            </div>
+            <span class="artist-name">${artist.name.toUpperCase()}</span>
+        `;
         artistNav.appendChild(artistBtn);
     });
 
@@ -260,9 +266,13 @@ function initializeGallery() {
         }
     });
 
-    // Add click handlers to artist profiles
+    // Add click handlers to artist profiles with sound effect
     document.querySelectorAll('.artist-profile').forEach(profile => {
         profile.addEventListener('click', () => {
+            // Play tattoo machine sound
+            playTattooSound();
+
+            // Navigate to artist's work
             const artistIndex = parseInt(profile.getAttribute('data-artist-index'));
             const slideIndex = artistStartIndices[artistIndex];
             swiper.slideToLoop(slideIndex);
@@ -273,6 +283,35 @@ function initializeGallery() {
     setTimeout(() => {
         updateActiveArtist();
     }, 100);
+}
+
+// ============================================
+// TATTOO MACHINE SOUND EFFECT
+// ============================================
+function playTattooSound() {
+    // Create AudioContext
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Create oscillator for buzz sound
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    // Configure tattoo machine-like buzz
+    oscillator.type = 'sawtooth';
+    oscillator.frequency.setValueAtTime(120, audioContext.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(80, audioContext.currentTime + 0.1);
+
+    // Volume envelope
+    gainNode.gain.setValueAtTime(0.15, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+
+    // Connect nodes
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    // Play sound
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 0.15);
 }
 
 // ============================================
