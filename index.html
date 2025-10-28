@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAGE - Professional Tattoo Shop | Tel Aviv</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Black+Ops+One&family=Rubik+Mono+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Loading Animation -->
+    <div class="loader" id="loader">
+        <div class="loader-bar"></div>
+    </div>
+
+    <!-- Main Content -->
+    <main id="main-content" style="display: none;">
+        <!-- Header -->
+        <header class="header">
+            <nav class="nav">
+                <a href="#home" class="nav-link">
+                    <span class="nav-icon">◆</span>
+                    <span class="nav-text">HOME</span>
+                </a>
+                <a href="#about" class="nav-link">
+                    <span class="nav-icon">▲</span>
+                    <span class="nav-text">ABOUT</span>
+                </a>
+                <a href="#contact" class="nav-link">
+                    <span class="nav-icon">●</span>
+                    <span class="nav-text">CONTACT</span>
+                </a>
+            </nav>
+            <a href="#" class="header-cta" id="book-now-btn">
+                <span class="cta-icon">✦</span>
+                <span class="cta-text">BOOK NOW</span>
+            </a>
+        </header>
+
+        <!-- Hero Section with Cube Gallery -->
+        <section class="hero" id="home">
+            <h1 class="sage-title">SAGE</h1>
+            <p class="sage-subtitle">PROFESSIONAL TATTOO SHOP</p>
+
+            <div class="swiper cube-swiper">
+                <div class="swiper-wrapper" id="swiper-wrapper">
+                    <!-- Slides will be loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- Artist Profile Navigation -->
+            <div class="artist-nav" id="artist-nav">
+                <!-- Profile images will be loaded dynamically -->
+            </div>
+        </section>
+
+        <!-- About Section -->
+        <section class="about-section" id="about">
+            <!-- Video Background Gallery -->
+            <div class="video-container">
+                <video class="video-bg video-1" autoplay loop muted playsinline>
+                    <source src="assets/about/lady-mostera.mp4" type="video/mp4">
+                </video>
+                <video class="video-bg video-2" autoplay loop muted playsinline>
+                    <source src="assets/about/groc-paint.mp4" type="video/mp4">
+                </video>
+            </div>
+
+            <!-- Overlay Content -->
+            <div class="about-overlay">
+                <h2 class="about-message">GUEST SPOTS IS OPEN</h2>
+                <h2 class="about-message">WALKINS ALWAYS WELCOME</h2>
+            </div>
+        </section>
+
+        <!-- Contact Section -->
+        <section class="contact-section" id="contact">
+            <div class="contact-content">
+                <div class="info-grid">
+                    <div class="info-block">
+                        <h3 class="info-label">CONTACT</h3>
+                        <p class="info-text">Eilat Street 22<br>Tel Aviv-Yafo</p>
+                        <a href="tel:+972503288193" class="info-link">+972 50-328-8193</a>
+                        <p class="info-subtext">Call or WhatsApp</p>
+                        <a href="https://instagram.com/sage.tattooshop" target="_blank" class="info-link">@sage.tattooshop</a>
+                        <p class="info-subtext">Follow us on Instagram</p>
+                    </div>
+
+                    <div class="info-block">
+                        <h3 class="info-label">STUDIO HOURS</h3>
+                        <div class="hours">
+                            <p><span class="day">SUNDAY - THURSDAY</span><span class="time">10:00 - 20:00</span></p>
+                            <p><span class="day">FRIDAY</span><span class="time">10:00 - 16:20</span></p>
+                            <p><span class="day">SATURDAY</span><span class="time">CLOSED</span></p>
+                        </div>
+                    </div>
+
+                    <div class="info-block">
+                        <h3 class="info-label">FIND US</h3>
+                        <a href="https://maps.google.com/?q=Eilat+Street+22+Tel+Aviv" target="_blank" class="map-button">OPEN IN MAPS</a>
+                        <a href="https://waze.com/ul?q=Eilat+Street+22+Tel+Aviv" target="_blank" class="map-button">NAVIGATE WITH WAZE</a>
+                    </div>
+                </div>
+
+                <p class="powered-by">POWERED BY GROC & SUNCHES</p>
+            </div>
+        </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
